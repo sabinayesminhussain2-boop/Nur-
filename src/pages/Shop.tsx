@@ -38,6 +38,13 @@ export default function Shop() {
   const [mobileFilters, setMobileFilters] = useState(false);
   const gridRef = useRevealGroup<HTMLDivElement>();
 
+  useEffect(() => {
+    document.body.style.overflow = mobileFilters ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileFilters]);
+
   // React to category links arriving via URL (header Living / Dining etc.)
   useEffect(() => {
     setFilters((f) => ({
@@ -282,6 +289,7 @@ export default function Shop() {
             ) : (
               <div
                 ref={gridRef}
+                key={`${sort}-${filtered.map((p) => p.id).join(",")}`}
                 className="mt-10 grid grid-cols-1 gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3"
               >
                 {filtered.map((p) => (

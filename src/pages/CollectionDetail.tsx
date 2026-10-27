@@ -61,6 +61,7 @@ export default function CollectionDetail() {
 
         <div
           ref={gridRef}
+          key={collection.id}
           className="mt-16 grid grid-cols-1 gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3"
         >
           {products.map((p) => (
