@@ -1,1 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#080808"/><path d="M14 48V16h8l18 20V16h9v32h-8L23 28v20z" fill="#f45ca8"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" fill="#171615"/>
+  <text x="32" y="42" font-family="Georgia, 'Times New Roman', serif" font-size="26" letter-spacing="3" fill="#F2EFE9" text-anchor="middle">UXT</text>
+  <rect x="12" y="50" width="40" height="1" fill="#C7B8A4"/>
+</svg>

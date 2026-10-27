@@ -1,30 +1,43 @@
-# Permanent NEW.COM hosting — GitHub Pages
+# Deployment — UXT.COM
 
-The complete deployment is committed in `docs/` on branch `arena/305052c4-nur`. The source app and its local preview configuration are unchanged.
+## Vercel (preconfigured)
 
-## One-time setting (repository owner)
+`vercel.json` already pins the Vite framework, install/build commands, the
+`dist` output directory and an SPA rewrite so deep links such as
+`/product/forma-modular-sofa` resolve to `index.html`.
 
-Open https://github.com/sabinayesminhussain2-boop/Nur-/settings/pages
+1. Connect the repository in Vercel.
+2. Build settings are read from `vercel.json` — no environment variables are
+   required for the current build.
+3. After deploy, verify a deep link and the `/studio` route reload directly
+   without a 404.
 
-Under **Build and deployment**:
+## Any static host
 
-1. Source: **Deploy from a branch**
-2. Branch: **arena/305052c4-nur**
-3. Folder: **/docs**
-4. Click **Save**.
+```sh
+npm ci
+npm run build
+```
 
-GitHub will build the deployment and show the live URL in that same settings page, typically within a few minutes. The expected address is https://sabinayesminhussain2-boop.github.io/Nur-/ — this is NOT live or verified until Pages has been enabled and deployment succeeds.
+Serve the generated `dist/` directory with an SPA fallback to `/index.html`
+(nginx `try_files`, Netlify `_redirects` rule `/* /index.html 200`, etc.).
 
-The connected GitHub integration returned HTTP 403 (`Resource not accessible by integration`) when attempting to enable Pages, so that one setting requires the repository owner's browser session. No credentials need to be shared with the agent.
+## Pre-launch integration checklist
 
-## Updating the deployment
-
-Run `node scripts/prepare-pages.mjs`, then commit and push the updated `docs/` on the same branch. The script uses Vite's project-site base path and rewrites generated image/model paths for `/Nur-/`. Original source files are not rewritten. Keep `docs/.nojekyll`.
-
-## Alternative static hosting
-
-`exports/NEW-COM-static-site.zip` contains the root-path production website. Extract it and upload its contents to a static host. It includes all fonts, images and GLB models; no backend or environment secrets are needed. For GitHub's `/Nur-/` path use `docs/`, not that root-path ZIP.
-
-## Boundaries
-
-The contact form downloads a draft; no message delivery service is connected. The images are AI-generated and the interactive vehicles are simplified concept GLBs. HTTPS hosting preserves all existing interactive features, subject to WebGL support on the visitor's device.
+- [ ] Replace demo prices and sample inventory in `src/data/catalog.ts`, or
+      wire the catalog to a commerce backend.
+- [ ] Connect a payment provider through a server-side checkout flow and
+      enable the disabled checkout button in `src/pages/Cart.tsx`.
+- [ ] Connect newsletter (Klaviyo/Mailchimp/Resend) and contact email (Resend/
+      Postmark/CRM) to backend endpoints; update the demo success panels in
+      `Newsletter.tsx` and `Contact.tsx`.
+- [ ] Add real social profile URLs to `src/data/site.ts`.
+- [ ] Replace generated/placeholder imagery in `public/images/` with licensed
+      photography, keeping filenames, then run
+      `node scripts/optimize-images.mjs`.
+- [ ] To enable generative AI, add a backend assistant endpoint and rewire the
+      two functions in `src/lib/assistant.ts`; never ship API keys client-side.
+- [ ] Publish real privacy policy, terms, shipping and returns copy
+      (`src/pages/Contact.tsx` anchors).
+- [ ] Confirm canonical origin (`ORIGIN` in `src/hooks/useDocumentMeta.ts` and
+      JSON-LD in `ProductDetail.tsx`) matches the production domain.

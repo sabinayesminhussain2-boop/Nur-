@@ -1,83 +1,121 @@
-# NEW.COM — Drive the future
+# UXT.COM — Furniture for considered living
 
-A complete independent automotive concept website. React 19, TypeScript, Vite, Three.js, React Three Fiber and Drei. All fonts, WebP imagery and GLB assets are served locally.
+A production-quality, fully responsive luxury furniture storefront. React 19,
+TypeScript, Vite, Tailwind CSS v4 and React Router. All fonts and imagery are
+self-hosted — no external runtime requests, no trackers, no API keys in the
+client.
 
 ## Open / run
 
-Requires Node.js 22+ and npm.
+Requires Node.js 20+ and npm.
 
 ```sh
 npm ci
-npm run dev       # Development at port 5173, accessible on 0.0.0.0
+npm run dev       # Development at http://localhost:5173 (bound to 0.0.0.0)
 npm run build     # TypeScript validation + production assets in dist/
-npm run preview   # Production preview at port 5173; stop dev first
+npm run preview   # Production preview at port 5173
+npm test          # Smoke tests (build, assets, catalog, routes, assistant engine)
 ```
 
-In Arena, open the **NEW.COM Website** live preview. The running preview is a temporary environment, not permanent hosting.
+The dev server is also exposed as the **UXT.com Website** live preview inside
+Arena. The preview is a temporary environment, not permanent hosting.
 
-## Website
+## Pages
 
-- Cinematic selectable hero and four distinct, alternating full-width vehicle showcases
-- Two gallery angles per car, plus a front/side/rear editorial gallery
-- Real interactive WebGL configurator: six paints, three spoke geometries, three seat materials, three lighting environments
-- Mouse/touch orbit, wheel/pinch zoom, keyboard camera navigation, zoom buttons, front/side/rear/interior-cutaway presets
-- Full configuration reset, live summary and text-file configuration downloads
-- Accurate variant-specific performance tables, manufacturer reference links, animated counters
-- About, contact section, honest contact-draft modal and complete footer
-- Mobile/tablet/desktop styling, keyboard focus management, reduced-motion support
-- Lazy-loaded 3D code/assets, on-demand rendering, capped device pixel ratio
-- WebGL preflight, loading feedback, model-error boundary, context-loss fallback and retry
+| Route | Page |
+| --- | --- |
+| `/` | Home — cinematic hero, editorial showcase, categories, collections, featured products, brand story, materials rail, campaign, journal, newsletter |
+| `/shop` | Shop All Furniture — functional filters, sorting and natural-language search |
+| `/categories` | Furniture Categories — editorial asymmetrical grid |
+| `/product/:slug` | Product Details — gallery, variants, dimensions, specs, care, related pieces, Product JSON-LD |
+| `/collections` and `/collections/:id` | Collections and collection stories |
+| `/about` | Brand philosophy, principles and process |
+| `/journal` and `/journal/:slug` | Design journal with full article layouts |
+| `/contact` | Contact form (demo), FAQ, shipping, privacy and terms anchors |
+| `/wishlist` | Saved pieces, persisted locally |
+| `/cart` | Full cart with quantity controls and order summary |
+| `/studio` | Design Studio — style discovery, room planner, natural-language search |
 
-### Keyboard viewer controls
+## Design system
 
-Focus the 3D canvas: arrow keys orbit, `+` / `-` zoom and `Home` resets the camera. All camera actions are also exposed as buttons. Selecting an interior material opens the cutaway view, removing the roof and glass so the simplified seats are visible. Choose any exterior camera preset to restore them.
+Defined in `src/styles.css` as Tailwind v4 theme tokens:
 
-### Honest feature boundaries
+- Ink `#171615`, coal `#242220`, warm charcoal `#302D29`
+- Ivory `#F2EFE9`, warm grey `#A9A39A`, taupe `#82786E`, accent `#C7B8A4`
+- Manrope (interface) and Cormorant Garamond (editorial serif), self-hosted via
+  Fontsource
+- Reveal-on-scroll, hover, drawer and toast animations respect
+  `prefers-reduced-motion`
 
-This is an **independent concept**, not a manufacturer website or vehicle retailer. No checkout, reservation, price quote or message delivery is implied.
+## Architecture
 
-Studio and racetrack images are AI-generated editorial renders and may differ from production vehicles. GLB models are original simplified procedural concepts, not manufacturer CAD. They include different coupe/SUV proportions and original grille/light/wing details, but are not accurate reproductions of the real vehicles. Wheel options change actual spoke geometry and finish. The interior is a simplified seat-material cutaway, not a detailed production cabin. Exact manufacturer models and photography require licensed assets.
+```
+src/
+  data/          Centralized catalog, collections, journal and site content
+  context/       ShopContext (cart + wishlist, localStorage) and UI overlays
+  hooks/         Scroll reveal, per-route SEO metadata, scroll restoration
+  lib/           Currency helpers and the catalog assistant engine
+  components/    Header, mobile nav, drawers, product cards, filters, footer…
+  pages/         One component per route
+```
 
-The contact form **downloads a draft only**. It does not send, transmit or retain personal data. Configuration downloads are local files. No analytics or tracking services are installed.
+- **Cart & wishlist** persist in `localStorage` (`uxt-cart-v1`,
+  `uxt-wishlist-v1`) with a slide-in cart drawer, toasts and badge feedback.
+- **SEO**: per-route titles, meta descriptions, canonical URLs, Open Graph
+  tags and Product structured data generated from real catalog fields.
+- **Accessibility**: semantic landmarks, labelled controls, keyboard-operable
+  overlays with Escape handling, `inert` closed drawers, visible focus states
+  and descriptive image alt text.
+- **Resilient imagery**: every image has a branded fallback if an asset fails,
+  so layouts never break.
 
-If WebGL is unsupported, a GLB fails, or the GPU context is lost, the viewer displays the selected vehicle's studio render with an explicit explanation. The image does **not** pretend to show selected paint/wheels. Camera controls are disabled; selection, specification lookup and configuration downloads remain available. Retry rechecks WebGL and clears the model loader cache.
+## On-site design tools (the "AI features")
 
-## Vehicle data
+No external AI model is connected and no API keys exist in the frontend. The
+tools are deterministic and run against the real catalog:
 
-`src/data.ts` centralizes specifications and gallery assets:
+- **Interior assistant** (`AssistantDrawer`, header sparkle icon) — intent-based
+  Q&A that returns actual products with dimensions and prices.
+- **Room style discovery** (`/studio`) — ranks pieces by selected style tags.
+- **Room planning assistant** (`/studio`) — checks product measurements against
+  room dimensions with a 75 cm circulation allowance; output is explicitly
+  labelled conceptual guidance.
+- **Natural-language search** — parses category, budget, colour, material and
+  room-size phrases into catalog filters (used in the search overlay, shop and
+  studio).
+- **Personalized recommendations** — product detail "Complements" derived from
+  collection/category relationships.
 
-- 2024 Porsche 911 GT3 RS: 518 hp / 525 PS, 465 Nm, 3.2 seconds, 296 km/h
-- 2024 BMW M4 Competition **RWD**: 503 hp / 510 PS, 650 Nm, 3.9 seconds, 250 km/h standard limiter; optional M Driver's Package excluded
-- 2024 Mercedes-AMG GT 63 **two-door 4MATIC+ coupe**: 577 hp / 585 PS, 800 Nm, 3.2 seconds, 315 km/h
-- 2024 Lamborghini **Urus S**: 657 hp / 666 PS, 850 Nm, 3.5 seconds, 305 km/h
+To connect a hosted LLM, replace `answerQuestion` / `naturalLanguageSearch` in
+`src/lib/assistant.ts` with calls to a backend endpoint (for example
+`POST /api/assistant`), keeping the existing response shapes. The key must live
+server-side only.
 
-Acceleration is 0–100 km/h. Power is rounded mechanical horsepower, not metric PS. Manufacturer reference links are included. Model changes stay synchronized across hero, configurator and technical tables.
+## Honest prototype boundaries
 
-## Testing
+- All prices are **illustrative demo prices**, editable centrally in
+  `src/data/catalog.ts`.
+- Availability and lead times use **sample inventory** — there is no live
+  stock, fulfilment or checkout connection. Checkout is intentionally disabled
+  and no payment data is collected; integrate Stripe or similar via a secure
+  backend before launch.
+- The contact and newsletter forms validate input but **do not transmit or
+  store anything**; their success states say so explicitly and describe the
+  integration required.
+- Social entries are labelled placeholders — no profile URLs are invented.
+- No testimonials, awards, certifications, statistics or manufacturing
+  locations are fabricated.
+- Imagery: hero, editorial, collection and campaign photography are generated
+  editorial renders; product, category, material and journal slots use the same
+  generated-photo pipeline (placeholders carry a UXT label until replaced).
+  Licensed photography can be dropped into `public/images/` using the same
+  filenames.
 
-Keep the dev or production-preview server running on port 5173 in a separate terminal:
+## Image pipeline
+
+Generated JPEGs are converted to sized, stripped WebP via:
 
 ```sh
-npm test
-npm run test:acceptance
+node scripts/optimize-images.mjs   # JPEG -> resized WebP, then removes JPEGs
+node scripts/make-placeholders.mjs # branded placeholders for any missing slot
 ```
-
-The Linux browser helper uses Playwright with Chromium supplied by the npm `@sparticuz/chromium` package. It extracts bundled libraries into a temporary folder without an external browser download. Python 3 is required only for export, not for the website itself.
-
-Smoke coverage: vehicle selection, 3D loading, paint/wheel/camera controls, keyboard navigation, build download, all editorial gallery images, honest contact draft, focus restoration, mobile navigation, reduced motion, browser errors and responsive overflow.
-
-Acceptance coverage: all vehicle gallery angles and Explore/Configure buttons, all four GLBs and all six paint colors, three wheel designs, three interior materials, all lighting environments, camera presets, keyboard/mouse/touch rotation, full reset, section anchors, five responsive widths, GPU-context loss/retry, and a simulated no-WebGL device. Rendered-pixel comparisons verify that controls change the actual canvas rather than only UI state.
-
-`BASE_URL` can override the acceptance-test address. Browser tests use temporary screenshots outside the repository.
-
-## Models and export
-
-```sh
-npm run models     # Rebuild local concept GLBs from scripts/create-models.mjs
-npm run export     # Build and create verified ZIP files in exports/
-```
-
-- `NEW-COM-project.zip`: source, package lock, local assets, tests, docs and production output. No `.git`, secrets, caches or `node_modules`.
-- `NEW-COM-static-site.zip`: ready-to-host production website. Extract to the root of a static host (Netlify, Cloudflare Pages, Vercel static output, nginx, etc.). Serve over HTTP(S), not `file://`. Build command: `npm run build`; publish directory: `dist`.
-
-3D is a substantial lazy-loaded dependency; Vite may report a chunk-size advisory. The main page does not download that bundle until the configurator approaches the viewport. Only the selected GLB is requested; a previously viewed model can remain in the loader cache for responsive switching.

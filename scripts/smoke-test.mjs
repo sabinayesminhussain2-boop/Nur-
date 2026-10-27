@@ -1,118 +1,80 @@
-import { launchBrowser } from "./browser.mjs";
-import assert from "node:assert/strict";
-const browser = await launchBrowser();
-const page = await browser.newPage({
-  viewport: { width: 1440, height: 1000 },
-  deviceScaleFactor: 1,
-});
-const errors = [];
-page.on("pageerror", (e) => errors.push(e.message));
-page.on("console", (m) => {
-  if (m.type() === "error") errors.push(m.text());
-});
-await page.goto("http://localhost:5173/", { waitUntil: "networkidle" });
-await page.screenshot({ path: "/home/user/desktop.png", fullPage: false });
-await page.getByRole("button", { name: "Next featured vehicle" }).click();
-assert.match(await page.locator(".vehicle-caption").innerText(), /BMW/);
-await page.locator("#configurator").scrollIntoViewIfNeeded();
-await page.locator("#vehicle").selectOption("3");
-await page.getByRole("button", { name: "Electric blue", exact: true }).click();
-assert.equal(
-  await page
-    .getByRole("button", { name: "Electric blue", exact: true })
-    .getAttribute("aria-pressed"),
-  "true",
-);
-await page.getByRole("button", { name: "Forged", exact: true }).click();
-await page.getByRole("button", { name: "Rear", exact: true }).click();
-await page.waitForTimeout(2000);
-assert.match(
-  await page.locator(".live-summary").innerText(),
-  /Electric blue.*Forged/,
-);
-assert.equal(await page.locator("canvas").count(), 1);
-await page.getByRole("button", { name: "Zoom in", exact: true }).click();
-await page.getByRole("button", { name: "Zoom out", exact: true }).click();
-await page.locator("canvas").focus();
-await page.keyboard.press("ArrowRight");
-await page.keyboard.press("+");
-await page.keyboard.press("Home");
-await page.getByRole("button", { name: "Reset camera", exact: true }).click();
-await page.screenshot({ path: "/home/user/config.png" });
-await page.locator("#experience").scrollIntoViewIfNeeded();
-for (let i = 0; i < 4; i++) {
-  await page
-    .getByRole("button", { name: new RegExp(`^Gallery scene ${i + 1}:`) })
-    .click();
-  await page.locator(".experience>img").evaluate((image) => image.decode());
-  assert.equal(
-    await page
-      .locator(".experience>img")
-      .evaluate((image) => image.naturalWidth > 0),
-    true,
-  );
+/* UXT smoke test — static integrity checks, no external services. */
+import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { join } from "node:path";
+
+let failures = 0;
+const fail = (msg) => {
+  console.error(`✗ ${msg}`);
+  failures++;
+};
+const pass = (msg) => console.log(`✓ ${msg}`);
+
+/* 1. Build must exist */
+if (!existsSync("dist/index.html")) {
+  fail("dist/index.html missing — run npm run build first");
+} else {
+  pass("production build present");
 }
-await page.locator("#configurator").scrollIntoViewIfNeeded();
-const [download] = await Promise.all([
-  page.waitForEvent("download"),
-  page.getByRole("button", { name: "SAVE YOUR CONFIGURATION" }).click(),
-]);
-assert.equal(download.suggestedFilename(), "NEW-COM-your-build.txt");
-await page.locator(".contact-link").click();
-await page.getByLabel("Your name").fill("Test Driver");
-await page.getByLabel("Email address").fill("test@example.com");
-await page.getByLabel("What moves you?").fill("A concept showroom enquiry.");
-await Promise.all([
-  page.waitForEvent("download"),
-  page.getByRole("button", { name: "CREATE MESSAGE DRAFT" }).click(),
-]);
-assert.match(
-  await page.locator(".sent-message").innerText(),
-  /has not been sent/,
-);
-await page.getByRole("button", { name: "BACK TO THE SHOWROOM" }).click();
-assert.equal(
-  await page
-    .locator(".contact-link")
-    .evaluate((el) => el === document.activeElement),
-  true,
-  "Contact dialog returns keyboard focus",
-);
-await page.setViewportSize({ width: 390, height: 844 });
-await page.goto("http://localhost:5173/", { waitUntil: "networkidle" });
-await page.screenshot({ path: "/home/user/mobile.png" });
-assert.equal(
-  await page.evaluate(
-    () => document.documentElement.scrollWidth <= window.innerWidth,
-  ),
-  true,
-  "Mobile horizontal overflow",
-);
-await page.getByRole("button", { name: "Open menu" }).click();
-await page
-  .locator(".nav")
-  .getByRole("link", { name: "CONFIGURATOR", exact: true })
-  .click();
-assert.equal(await page.locator(".nav").getAttribute("class"), "nav");
-for (const width of [360, 768, 1024, 1440]) {
-  await page.setViewportSize({ width, height: 900 });
-  assert.equal(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-    true,
-    `Overflow at ${width}px`,
-  );
+
+/* 2. Every /images/* reference in src resolves to a public asset */
+const srcFiles = execSync("find src -name '*.ts' -o -name '*.tsx'", {
+  encoding: "utf8",
+})
+  .trim()
+  .split("\n");
+const refs = new Set();
+for (const f of srcFiles) {
+  const content = readFileSync(f, "utf8");
+  for (const m of content.matchAll(/["'](\/images\/[^"']+)["']/g)) {
+    refs.add(m[1]);
+  }
 }
-await page.emulateMedia({ reducedMotion: "reduce" });
-assert.equal(
-  await page
-    .locator(".hero-car")
-    .evaluate((el) => getComputedStyle(el).animationName),
-  "none",
-);
-assert.deepEqual(errors, []);
-console.log(
-  "PASS: vehicle switching, 3D loading, paint/wheel/camera and keyboard controls, all gallery images, build download, contact draft, mobile navigation, four responsive widths, reduced motion, no browser errors.",
-);
-await browser.close();
+const available = new Set(readdirSync("public/images"));
+for (const ref of refs) {
+  const name = ref.replace("/images/", "");
+  if (!available.has(name)) fail(`missing image asset: ${ref}`);
+}
+if (failures === 0) pass(`${refs.size} image references resolve`);
+
+/* 3. Catalog integrity */
+const catalog = readFileSync("src/data/catalog.ts", "utf8");
+const slugs = [...catalog.matchAll(/slug: "([^"]+)"/g)].map((m) => m[1]);
+if (new Set(slugs).size !== slugs.length) fail("duplicate product slugs");
+if (slugs.length !== 8) fail(`expected 8 products, found ${slugs.length}`);
+const prices = [...catalog.matchAll(/price: (\d+)/g)].map((m) => Number(m[1]));
+if (prices.some((p) => p <= 0)) fail("all prices must be positive");
+if (failures === 0) pass(`catalog: ${slugs.length} unique products, valid prices`);
+
+/* 4. Assistant engine, executed with tsx (full TS resolution) */
+try {
+  execSync("npx tsx scripts/engine-check.ts", { stdio: "inherit" });
+  pass("assistant engine checks pass");
+} catch {
+  fail("assistant engine checks failed");
+}
+
+/* 5. Routes referenced in the app are declared in App.tsx */
+const app = readFileSync("src/App.tsx", "utf8");
+const declared = new Set([...app.matchAll(/path="([^"]+)"/g)].map((m) => m[1]));
+const linkTargets = new Set();
+for (const f of srcFiles) {
+  const content = readFileSync(f, "utf8");
+  for (const m of content.matchAll(/to="(\/[^"?]*)/g)) linkTargets.add(m[1]);
+}
+for (const target of linkTargets) {
+  const base = target.split("/").filter(Boolean)[0];
+  const known =
+    declared.has(target) ||
+    declared.has(`/${base}/:slug`) ||
+    declared.has(`/${base}/:id`) ||
+    declared.has("*");
+  if (!known) fail(`unregistered route target: ${target}`);
+}
+if (failures === 0) pass("all internal link targets map to declared routes");
+
+if (failures) {
+  console.error(`\n${failures} smoke test failure(s)`);
+  process.exit(1);
+}
+console.log("\nAll smoke tests passed.");
